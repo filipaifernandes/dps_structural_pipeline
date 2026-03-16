@@ -9,7 +9,7 @@ rule query_rcsb:
     output:
         "data/pdb_ids.txt"
     shell:
-        "python scripts/query_rcsb.py config/config.yaml > {output}"
+        "python scripts/query_rcsb.py config.yaml > {output}"
 
 rule download_pdbs:
     input:
