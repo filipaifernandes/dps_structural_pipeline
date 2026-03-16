@@ -1,43 +1,42 @@
-import os
 import requests
+import sys
+import itertools
 import yaml
 
-os.makedirs("data", exist_ok=True)
+config_file = sys.argv[1]
 
-with open("config/config.yaml") as f:
+with open(config_file) as f:
     config = yaml.safe_load(f)
 
-queries = config["queries"]
+queries = config.get("queries", [])
 
-nodes = []
-for q in queries:
-    nodes.append({
+if not queries:
+    sys.exit("No queries found in config.yaml")
+
+# Build a search string by joining query terms
+search_string = " AND ".join(queries)  
+
+# RCSB search API
+url = "https://search.rcsb.org/rcsbsearch/v2/query"
+
+payload = {
+    "query": {
         "type": "terminal",
         "service": "text",
         "parameters": {
-            "attribute": "struct.title",
             "operator": "contains_words",
-            "value": q
+            "value": search_string
         }
-    })
-
-query_json = {
-    "query": {
-        "type": "group",
-        "logical_operator": "or",
-        "nodes": nodes
     },
     "return_type": "entry"
 }
 
-url = "https://search.rcsb.org/rcsbsearch/v2/query"
-response = requests.post(url, json=query_json)
-data = response.json()
+r = requests.post(url, json=payload)
+r.raise_for_status()
+results = r.json()["result_set"]
 
-pdb_ids = [r["identifier"] for r in data["result_set"]]
+pdb_ids = [entry["identifier"] for entry in results]
 
-with open("data/pdb_ids.txt", "w") as f:
-    for pdb in pdb_ids:
-        f.write(pdb + "\n")
-
-print(f"Saved {len(pdb_ids)} PDB IDs to data/pdb_ids.txt")
+# Print PDB IDs to stdout (one per line)
+for pdb in sorted(pdb_ids):
+    print(pdb)
