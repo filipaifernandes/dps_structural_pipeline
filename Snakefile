@@ -19,43 +19,25 @@ rule download_pdbs:
     shell:
         "python scripts/download_pdbs.py && touch {output}"
 
-rule modeller_struct_alignment:
+# 👇 STOP HERE FOR MANUAL MODELLER STEP
+rule prepare_for_modeller:
     input:
         "data/raw/.done"
     output:
-        "data/tree/dps_struct_tree.nwk"
-    container:
-        "docker://filipafernandes/dps_structural_pipeline:006"
+        "data/aligned/READY_FOR_MODELLER.txt"
     shell:
-        r"""
-        python - <<'EOF'
-import glob
-import os
+        """
+        mkdir -p data/aligned
+        echo "Run MODELLER manually and place structures_aligned.fasta here" > {output}
+        """
 
-key = "MODELIRANJE"
-
-patterns = [
-    "/opt/conda/envs/snakemake/lib/modeller-*/modlib/modeller/config.py",
-    "/opt/conda/envs/snakemake/lib/python*/site-packages/modeller/config.py",
-]
-
-patched = []
-
-for pattern in patterns:
-    for path in glob.glob(pattern):
-        with open(path, "r") as f:
-            txt = f.read()
-
-        txt2 = txt.replace("license = 'XXXX'", f"license = '{key}'")
-        txt2 = txt2.replace('license = "XXXX"', f'license = "{key}"')
-
-        with open(path, "w") as f:
-            f.write(txt2)
-
-        patched.append(path)
-
-print("Patched:", patched)
-EOF
-
-        python scripts/modeller_struct_alignment.py {output}
+# 👇 resumes AFTER you run MODELLER
+rule build_tree:
+    input:
+        "data/aligned/structures_aligned.fasta"
+    output:
+        "data/tree/dps_struct_tree.nwk"
+    shell:
+        """
+        python scripts/build_tree.py {input} {output}
         """
