@@ -1,6 +1,5 @@
 threads: 4
-tree_method: FastTree
 #List of proteins/species for the query
 queries:
-  - "Deinococcus Dps1"
-  - "Deinococcus Dps2"
+  - "Dps Deinococcus radiodurans"
+  - "DNA protection protein Dps Deinococcus"
