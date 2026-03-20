@@ -1,5 +1,4 @@
 configfile: "config.yaml"
-container: "docker://filipafernandes/dps_structural_pipeline:006"
 
 rule all:
     input:
@@ -8,7 +7,7 @@ rule all:
 rule query_rcsb:
     output:
         "data/pdb_ids.txt"
-    container: "docker://filipafernandes/dps_structural_pipeline:006
+    container: "docker://filipafernandes/dps_structural_pipeline:006"
     shell:
         "python scripts/query_rcsb.py config.yaml"
 
@@ -27,4 +26,8 @@ rule salign_tree:
     output:
         "data/tree/structural.tree"
     shell:
-        "python scripts/salign.py"
+        """
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda activate modeller
+        python scripts/salign.py
+        """
