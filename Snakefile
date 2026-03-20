@@ -3,7 +3,7 @@ container: "docker://filipafernandes/dps_structural_pipeline:006"
 
 rule all:
     input:
-        "data/tree/dps_struct_tree.nwk"
+        "data/tree/structural.tree"
 
 rule query_rcsb:
     output:
@@ -18,26 +18,11 @@ rule download_pdbs:
         "data/raw/.done"
     shell:
         "python scripts/download_pdbs.py && touch {output}"
-
-# 👇 STOP HERE FOR MANUAL MODELLER STEP
-rule prepare_for_modeller:
+l
+rule salign_tree:
     input:
         "data/raw/.done"
     output:
-        "data/aligned/READY_FOR_MODELLER.txt"
+        "data/tree/structural.tree"
     shell:
-        """
-        mkdir -p data/aligned
-        echo "Run MODELLER manually and place structures_aligned.fasta here" > {output}
-        """
-
-# 👇 resumes AFTER you run MODELLER
-rule build_tree:
-    input:
-        "data/aligned/structures_aligned.fasta"
-    output:
-        "data/tree/dps_struct_tree.nwk"
-    shell:
-        """
-        python scripts/build_tree.py {input} {output}
-        """
+        "python scripts/salign.py"
