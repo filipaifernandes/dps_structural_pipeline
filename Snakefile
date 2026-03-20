@@ -8,6 +8,7 @@ rule all:
 rule query_rcsb:
     output:
         "data/pdb_ids.txt"
+    container: "docker://filipafernandes/dps_structural_pipeline:006
     shell:
         "python scripts/query_rcsb.py config.yaml"
 
@@ -16,9 +17,10 @@ rule download_pdbs:
         "data/pdb_ids.txt"
     output:
         "data/raw/.done"
+    container: "docker://filipafernandes/dps_structural_pipeline:006"
     shell:
         "python scripts/download_pdbs.py && touch {output}"
-l
+
 rule salign_tree:
     input:
         "data/raw/.done"
