@@ -2,6 +2,10 @@ configfile: "config.yaml"
 
 rule all:
     input:
+        "data/pdb_ids.txt",
+        "data/raw/.done",
+        "data/tree/structural.tree",
+        "data/tree/distance_matrix.txt",
         "data/tree/structural_tree.nwk"
 
 rule query_rcsb:
