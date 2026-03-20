@@ -1,10 +1,10 @@
-from modeller import environ, alignment, model, log
+from modeller import *
 import os
 from Bio.PDB import PDBParser
 
 log.verbose()
 env = environ()
-env.io.atom_files_directory = ['data/raw']
+env.io.atom_files_directory = [os.path.abspath("data/raw")]
 
 aln = alignment(env)
 parser = PDBParser(QUIET=True)
@@ -41,14 +41,14 @@ for code in pdbs:
 
         mdl = model(
             env,
-            file=code,
+            file=pdb_file,
             model_segment=(f'FIRST:{chain}', f'LAST:{chain}')
         )
 
         aln.append_model(
             mdl,
-            atom_files=code,
-            align_codes=code + chain
+            atom_files=pdb_file,
+            align_codes=f"{code}_{chain}"
         )
 
         loaded += 1
