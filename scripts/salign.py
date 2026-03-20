@@ -1,20 +1,19 @@
-from modeller import *
+from modeller import environ, alignment, model, log
 import os
 from Bio.PDB import PDBParser
 
 log.verbose()
 env = environ()
-
 env.io.atom_files_directory = ['data/raw']
 
 aln = alignment(env)
 parser = PDBParser(QUIET=True)
 
-# function to detect first chain
+# Detect first chain
 def get_first_chain(pdb_path):
     structure = parser.get_structure("struct", pdb_path)
-    for model in structure:
-        for chain in model:
+    for model_obj in structure:
+        for chain in model_obj:
             return chain.id
     return None
 
@@ -22,11 +21,13 @@ def get_first_chain(pdb_path):
 with open("data/pdb_ids.txt") as f:
     pdbs = [line.strip().lower() for line in f if line.strip()]
 
+loaded = 0
+
 for code in pdbs:
     pdb_file = f"data/raw/{code}.pdb"
 
     if not os.path.exists(pdb_file):
-        print(f"Missing file: {code}")
+        print(f"Missing file: {pdb_file}")
         continue
 
     try:
@@ -36,7 +37,7 @@ for code in pdbs:
             print(f"No chain found in {code}")
             continue
 
-        print(f"{code} → using chain {chain}")
+        print(f"{code} -> using chain {chain}")
 
         mdl = model(
             env,
@@ -50,12 +51,17 @@ for code in pdbs:
             align_codes=code + chain
         )
 
+        loaded += 1
+
     except Exception as e:
         print(f"Skipping {code}: {e}")
 
+if loaded < 2:
+    raise ValueError("Need at least 2 valid structures for SALIGN")
+
 os.makedirs("data/tree", exist_ok=True)
 
-# SALIGN
+# Structural alignment + dendrogram
 aln.salign(
     rms_cutoff=3.5,
     normalize_pp_scores=False,
@@ -77,4 +83,4 @@ aln.salign(
 
 aln.write(file='data/tree/structural.ali', alignment_format='PIR')
 
-print(" SALIGN DONE")
+print("SALIGN DONE")
