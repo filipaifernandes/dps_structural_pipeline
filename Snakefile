@@ -2,7 +2,7 @@ configfile: "config.yaml"
 
 rule all:
     input:
-        "data/tree/structural.tree"
+        "data/tree/structural_tree.nwk"
 
 rule query_rcsb:
     output:
@@ -31,3 +31,23 @@ rule salign_tree:
         conda activate modeller
         python scripts/salign.py
         """
+        
+rule compute_distances:
+    input:
+        "data/tree/structural.ali"
+    output:
+        "data/tree/distance_matrix.txt"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:006"
+    shell:
+        "scripts/compute_distances.py"
+
+rule build_tree:
+    input:
+        "data/tree/distance_matrix.txt"
+    output:
+        "data/tree/structural_tree.nwk"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:006"
+    shell:
+        "scripts/build_tree.py"
