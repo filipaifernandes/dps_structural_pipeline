@@ -1,0 +1,80 @@
+from modeller import *
+import os
+from Bio.PDB import PDBParser
+
+log.verbose()
+env = environ()
+
+env.io.atom_files_directory = ['data/raw']
+
+aln = alignment(env)
+parser = PDBParser(QUIET=True)
+
+# function to detect first chain
+def get_first_chain(pdb_path):
+    structure = parser.get_structure("struct", pdb_path)
+    for model in structure:
+        for chain in model:
+            return chain.id
+    return None
+
+# Read PDB IDs
+with open("data/pdb_ids.txt") as f:
+    pdbs = [line.strip().lower() for line in f if line.strip()]
+
+for code in pdbs:
+    pdb_file = f"data/raw/{code}.pdb"
+
+    if not os.path.exists(pdb_file):
+        print(f"Missing file: {code}")
+        continue
+
+    try:
+        chain = get_first_chain(pdb_file)
+
+        if chain is None:
+            print(f"No chain found in {code}")
+            continue
+
+        print(f"{code} → using chain {chain}")
+
+        mdl = model(
+            env,
+            file=code,
+            model_segment=(f'FIRST:{chain}', f'LAST:{chain}')
+        )
+
+        aln.append_model(
+            mdl,
+            atom_files=code,
+            align_codes=code + chain
+        )
+
+    except Exception as e:
+        print(f"Skipping {code}: {e}")
+
+os.makedirs("data/tree", exist_ok=True)
+
+# SALIGN
+aln.salign(
+    rms_cutoff=3.5,
+    normalize_pp_scores=False,
+    rr_file='$(LIB)/as1.sim.mat',
+    overhang=30,
+    gap_penalties_1d=(-450, -50),
+    gap_penalties_3d=(0, 3),
+    gap_gap_score=0,
+    gap_residue_score=0,
+    dendrogram_file='data/tree/structural.tree',
+    alignment_type='tree',
+    feature_weights=(1., 0., 0., 0., 1., 0.),
+    improve_alignment=True,
+    fit=True,
+    write_fit=True,
+    write_whole_pdb=False,
+    output='ALIGNMENT QUALITY'
+)
+
+aln.write(file='data/tree/structural.ali', alignment_format='PIR')
+
+print(" SALIGN DONE")

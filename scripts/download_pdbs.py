@@ -9,11 +9,18 @@ with open("data/pdb_ids.txt") as f:
 
 valid_pdbs = [p.lower() for p in pdbs if re.fullmatch(r"[A-Za-z0-9]{4}", p)]
 
-if not valid_pdbs:
-    raise ValueError("No valid PDB IDs found in data/pdb_ids.txt")
-
 pdbl = PDBList()
 
 for pdb in valid_pdbs:
     print(f"Downloading {pdb}...")
-    pdbl.retrieve_pdb_file(pdb, pdir="data/raw", file_format="pdb", overwrite=True)
+
+    file_path = pdbl.retrieve_pdb_file(
+        pdb,
+        pdir="data/raw",
+        file_format="pdb",
+        overwrite=True
+    )
+
+    new_name = os.path.join("data/raw", f"{pdb}.pdb")
+    if os.path.exists(file_path):
+        os.rename(file_path, new_name)
