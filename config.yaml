@@ -1,5 +1,7 @@
 threads: 4
-#List of proteins/species for the query
-queries:
-  - "Dps Deinococcus radiodurans"
-  - "DNA protection protein Dps Deinococcus"
+query:
+  organism: "Deinococcus"
+  keywords:
+    - "dps"
+    - "dna protection protein"
+    - "ferritin"
