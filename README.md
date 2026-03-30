@@ -1,6 +1,6 @@
 # dps_structural_pipeline
 
-An automated and reproducible structural bioinformatics pipeline for retrieving protein structures and performing structural alignment and dendrogram generation.
+An automated and reproducible structural bioinformatics pipeline for retrieving protein structures and performing structural alignment.
 
 ---
 
@@ -9,9 +9,9 @@ An automated and reproducible structural bioinformatics pipeline for retrieving 
 This project implements a fully automated workflow using **Snakemake** to:
 
 * Retrieve protein structures (PDB files)
+* Filter structures based on organism and protein family
 * Preprocess and organize structural data
-* Perform structural alignment using **MODELLER**
-* Generate a structural dendrogram and alignment file
+* Perform structural alignment using **MODELLER (SALIGN)**
 
 The pipeline combines **containerized steps** for reproducibility with a **local execution step** for MODELLER due to licensing constraints.
 
@@ -19,26 +19,48 @@ The pipeline combines **containerized steps** for reproducibility with a **local
 
 ## Pipeline Architecture
 
+
 | Step                 | Description                      | Execution                      |
 | -------------------- | -------------------------------- | ------------------------------ |
-| Data Retrieval       | Fetch PDB structures             | Container (Docker/Singularity) |
+| Data Retrieval       | Query and fetch PDB structures   | Container (Docker/Singularity) |
 | Preprocessing        | Organize and validate structures | Container                      |
 | Structural Alignment | SALIGN via MODELLER              | Local environment              |
-| Output Generation    | Dendrogram + alignment           | Local                          |
 
 ---
 
 ## How It Works
 
-The workflow is running using **Snakemake**, which automatically manages dependencies between steps.
+The workflow is running using **Snakemake**, which  manages dependencies between steps.
 
-Most steps run inside a container for reproducibility. However, the structural alignment step:
+1. A structured query retrieves protein structures based on:
+   * Organism (e.g. *Deinococcus*)
+   * Protein family keywords (e.g. Dps, ferritin)
+2. Structures are downloaded and standardized
+3. A structural alignment is performed using **MODELLER SALIGN**
 
-* Calls a Python script (`scripts/salign.py`)
-* Uses **MODELLER**
-* Runs **locally** (outside the container)
+Most steps run inside a container for reproducibility. The alignment step runs locally due to MODELLER licensing.
 
-This hybrid design ensures both reproducibility and compatibility with licensed software.
+---
+
+## Query Configuration
+
+The dataset is fully defined in `config.yaml`:
+
+```yaml
+threads: 4
+
+query:
+  organism: "Deinococcus"
+  keywords:
+    - "dps"
+    - "dna protection protein"
+    - "ferritin"
+```
+
+This ensures:
+* Reproducibility
+* Transparency of dataset selection
+* Easy modification for other organisms or protein families
 
 ---
 
@@ -78,35 +100,43 @@ This will:
 
 ---
 
+### What happens:
+
+* Containerized steps:
+  * Query RCSB
+  * Download PDB files
+
+* Local step:
+  * Runs `scripts/salign.py` using MODELLER
+
+---
+
 ##  Output
 
 Results are generated in:
 
 ```
-data/tree/
-├── structural.tree   # Structural dendrogram (Newick format)
-├── structural.ali    # Structural alignment (PIR format)
+data/alignment/
+└── structural.ali    # Structural alignment (PIR format)
 ```
 
 ---
 
 ##  Methodology
 
-Structural alignment is performed using the SALIGN algorithm implemented in **MODELLER**, which:
-
+Structural alignment is performed using the **SALIGN algorithm** in MODELLER, which:
 * Aligns protein structures based on 3D coordinates
-* Computes similarity scores
-* Generates a dendrogram representing structural relationships
+* Optimizes residue correspondences
+* Produces a multiple structural alignment
 
 ---
 
 ##  Reproducibility
 
 This pipeline ensures reproducibility through:
-
 * Workflow management with **Snakemake**
 * Containerization of non-licensed steps
-* Fixed directory structure and deterministic execution
+* Config-driven dataset definition (`config.yaml`)
 
 Note: Full reproducibility requires a valid local installation of MODELLER.
 
@@ -117,11 +147,13 @@ Note: Full reproducibility requires a valid local installation of MODELLER.
 ```
 project/
 ├── Snakefile
+├── config.yaml
 ├── scripts/
+│   ├── query_rcsb.py
 │   └── salign.py
 ├── data/
 │   ├── raw/
-│   └── tree/
+│   └── alignment/
 ├── envs/
 └── README.md
 ```
@@ -130,12 +162,10 @@ project/
 
 ---
 
-##  Final Notes
+## Notes
 
-This pipeline reflects real-world bioinformatics practices by:
-
-* Integrating multiple tools into a single workflow
-* Handling software licensing constraints
-* Balancing reproducibility with practical limitations
+* The number of retrieved structures depends on availability in the PDB
+* Dps proteins in *Deinococcus* are relatively limited
+* The pipeline may return a small but biologically relevant dataset
 
 ---
