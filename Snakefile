@@ -4,9 +4,7 @@ rule all:
     input:
         "data/pdb_ids.txt",
         "data/raw/.done",
-        "data/tree/structural.tree",
-        "data/tree/distance_matrix.txt",
-        "data/tree/structural_tree.nwk"
+        "data/alignment/structural.ali"
 
 rule query_rcsb:
     output:
@@ -24,34 +22,14 @@ rule download_pdbs:
     shell:
         "python scripts/download_pdbs.py && touch {output}"
 
-rule salign_tree:
+rule salign_alignment:
     input:
         "data/raw/.done"
     output:
-        "data/tree/structural.tree"
+        "data/alignment/structural.ali"
     shell:
         """
         source ~/miniconda3/etc/profile.d/conda.sh
         conda activate modeller
         python scripts/salign.py
         """
-        
-rule compute_distances:
-    input:
-        "data/tree/structural.ali"
-    output:
-        "data/tree/distance_matrix.txt"
-    container:
-        "docker://filipafernandes/dps_structural_pipeline:006"
-    shell:
-        "scripts/compute_distances.py"
-
-rule build_tree:
-    input:
-        "data/tree/distance_matrix.txt"
-    output:
-        "data/tree/structural_tree.nwk"
-    container:
-        "docker://filipafernandes/dps_structural_pipeline:006"
-    shell:
-        "scripts/build_tree.py"
