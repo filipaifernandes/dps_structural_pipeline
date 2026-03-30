@@ -59,9 +59,9 @@ for code in pdbs:
 if loaded < 2:
     raise ValueError("Need at least 2 valid structures for SALIGN")
 
-os.makedirs("data/tree", exist_ok=True)
+os.makedirs("data/alignment", exist_ok=True)
 
-# Structural alignment + dendrogram
+# Structural alignment
 aln.salign(
     rms_cutoff=3.5,
     normalize_pp_scores=False,
@@ -71,8 +71,7 @@ aln.salign(
     gap_penalties_3d=(0, 3),
     gap_gap_score=0,
     gap_residue_score=0,
-    dendrogram_file='data/tree/structural.tree',
-    alignment_type='tree',
+    alignment_type='progressive',
     feature_weights=(1., 0., 0., 0., 1., 0.),
     improve_alignment=True,
     fit=True,
@@ -81,6 +80,6 @@ aln.salign(
     output='ALIGNMENT QUALITY'
 )
 
-aln.write(file='data/tree/structural.ali', alignment_format='PIR')
+aln.write(file='data/alignment/structural.ali', alignment_format='PIR')
 
 print("SALIGN DONE")
