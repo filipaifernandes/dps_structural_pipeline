@@ -1,31 +1,50 @@
-# scripts/download_pdbs.py
 import os
-import re
 from Bio.PDB import PDBList
 
-os.makedirs("data/raw", exist_ok=True)
+# Create output directory
+out_dir = "data/raw"
+os.makedirs(out_dir, exist_ok=True)
 
 # Read PDB IDs
 with open("data/pdb_ids.txt") as f:
-    pdbs = [line.strip() for line in f if line.strip()]
-
-# Keep only valid 4-character PDB IDs
-valid_pdbs = sorted([p.lower() for p in pdbs if re.fullmatch(r"[A-Za-z0-9]{4}", p)])
+    pdb_ids = [line.strip().lower() for line in f if line.strip()]
 
 pdbl = PDBList()
 
-for pdb in valid_pdbs:
-    print(f"Downloading {pdb}...")
-    file_path = pdbl.retrieve_pdb_file(
-        pdb,
-        pdir="data/raw",
-        file_format="pdb",
-        overwrite=True
-    )
+successful = []
+failed = []
 
-    # Rename to clean lowercase
-    new_name = os.path.join("data/raw", f"{pdb}.pdb")
-    if os.path.exists(file_path):
-        os.rename(file_path, new_name)
+for pdb_id in pdb_ids:
+    try:
+        print(f"Downloading {pdb_id}...")
 
-print(f"Downloaded {len(valid_pdbs)} PDB files")
+        file_path = pdbl.retrieve_pdb_file(
+            pdb_id,
+            pdir=out_dir,
+            file_format="pdb"
+        )
+
+        # Handle failed download (returns None or missing file)
+        if not file_path or not os.path.exists(file_path):
+            print(f"⚠️ Failed: {pdb_id}")
+            failed.append(pdb_id)
+            continue
+
+        # Rename to clean filename
+        new_path = os.path.join(out_dir, f"{pdb_id}.pdb")
+        os.rename(file_path, new_path)
+
+        successful.append(pdb_id)
+
+    except Exception as e:
+        print(f"❌ Error downloading {pdb_id}: {e}")
+        failed.append(pdb_id)
+
+print("\n--- SUMMARY ---")
+print(f"Successful: {len(successful)}")
+print(f"Failed: {len(failed)}")
+
+# Save failed IDs for debugging
+with open("data/failed_pdb_ids.txt", "w") as f:
+    for pid in failed:
+        f.write(pid + "\n")
