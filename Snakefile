@@ -27,6 +27,7 @@ rule salign_alignment:
         "data/raw/.done"
     output:
         "data/alignment/structural.ali"
+    singularity: None
     shell:
         """
         source ~/miniconda3/etc/profile.d/conda.sh
