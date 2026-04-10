@@ -30,7 +30,7 @@ rule salign_alignment:
     singularity: None
     shell:
         """
-        source ~/miniconda3/etc/profile.d/conda.sh
-        conda activate modeller
-        python scripts/salign.py
+         source $(conda info --base)/etc/profile.d/conda.sh
+         conda activate modeller
+         python scripts/salign.py
         """
