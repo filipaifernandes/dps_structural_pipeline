@@ -158,7 +158,7 @@ project/
 └── README.md
 ```
 
-![Pipeline DAG]()
+![Pipeline DAG](dag.png)
 
 ---
 
