@@ -1,7 +1,5 @@
 threads: 4
 query:
-  organism: "Deinococcus"
   keywords:
-    - "dps"
-    - "dna protection protein"
-    - "ferritin"
+    - "Dps"
+    - "DNA-binding protein from starved cells"
