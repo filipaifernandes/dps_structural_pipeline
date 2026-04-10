@@ -1,116 +1,139 @@
 # scripts/query_rcsb.py
 import requests
 import os
-import yaml
 import sys
-
-# -------------------------------
-# Load config
-# -------------------------------
-config_file = sys.argv[1]
-with open(config_file) as f:
-    config = yaml.safe_load(f)
-
-keywords = [k.lower() for k in config["query"]["keywords"]]
+import time
 
 os.makedirs("data", exist_ok=True)
 
-# -------------------------------
-# RCSB search query
-# -------------------------------
-url = "https://search.rcsb.org/rcsbsearch/v2/query"
+SEARCH_URL = "https://search.rcsb.org/rcsbsearch/v2/query"
+GRAPHQL_URL = "https://data.rcsb.org/graphql"
 
+# -------------------------------
+# Step 1 — Search for DPS (like website)
+# -------------------------------
 query = {
     "query": {
-        "type": "group",
-        "logical_operator": "or",
-        "nodes": [
-            {
-                "type": "terminal",
-                "service": "text",
-                "parameters": {
-                    "value": "DNA-binding protein from starved cells"
-                }
-            },
-            {
-                "type": "terminal",
-                "service": "text",
-                "parameters": {
-                    "value": "Dps"
-                }
-            }
-        ]
+        "type": "terminal",
+        "service": "full_text",
+        "parameters": {
+            "value": "dps"   # <- fixed, as you want
+        }
     },
-    "return_type": "polymer_entity"
+    "return_type": "entry",
+    "request_options": {
+        "return_all_hits": True
+    }
 }
 
-
-# -------------------------------
-# Query RCSB
-# -------------------------------
-response = requests.post(url, json=query)
+response = requests.post(SEARCH_URL, json=query)
 if response.status_code != 200:
-    raise RuntimeError(f"RCSB query failed: {response.status_code}")
+    raise RuntimeError(f"Search failed: {response.status_code}")
 
 data = response.json()
-pdb_ids = [entry["identifier"] for entry in data.get("result_set", [])]
-print(f"Initial candidate hits: {len(pdb_ids)}")
+entry_ids = [r["identifier"] for r in data.get("result_set", [])]
+
+print(f"Initial entry hits: {len(entry_ids)}")
+
+if not entry_ids:
+    raise ValueError("No results from search")
 
 # -------------------------------
-# Filter by keyword & select best per species
+# Step 2 — Batch fetch via GraphQL
+# -------------------------------
+def chunk_list(lst, size):
+    for i in range(0, len(lst), size):
+        yield lst[i:i+size]
+
+def fetch_batch(entry_batch):
+    query = """
+    query ($ids: [String!]!) {
+      entries(entry_ids: $ids) {
+        rcsb_id
+        rcsb_entry_info {
+          resolution_combined
+        }
+        polymer_entities {
+          rcsb_entity_source_organism {
+            scientific_name
+          }
+        }
+      }
+    }
+    """
+
+    response = requests.post(
+        GRAPHQL_URL,
+        json={"query": query, "variables": {"ids": entry_batch}}
+    )
+
+    if response.status_code != 200:
+        return []
+
+    return response.json().get("data", {}).get("entries", [])
+
+# -------------------------------
+# Step 3 — Process data
 # -------------------------------
 best_per_species = {}
 
-for pdb_id in pdb_ids:
-    entry_url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}"
-    r = requests.get(entry_url)
-    if r.status_code != 200:
-        continue
+batch_size = 50
 
-    entry_data = r.json()
-    text_blob = str(entry_data).lower()
-    if not any(k in text_blob for k in keywords):
-        continue  # skip if no keyword match
+for batch in chunk_list(entry_ids, batch_size):
+    entries = fetch_batch(batch)
 
-    # Get species
-    sources = entry_data.get("rcsb_entity_source_organism", [])
-    if not sources:
-        continue
+    for entry in entries:
+        try:
+            pdb_id = entry.get("rcsb_id")
 
-    # Use the first scientific name available
-    sci_name = sources[0].get("scientific_name", "")
-    if not sci_name:
-        continue
+            # --- resolution ---
+            res_list = entry.get("rcsb_entry_info", {}).get("resolution_combined", [])
+            if not res_list:
+                continue
 
-    # Normalize species to "Genus species" only
-    species_words = sci_name.split()
-    if len(species_words) < 2:
-        continue
-    species = " ".join(species_words[:2])
+            resolution = min(res_list)
 
-    # Get best resolution
-    res = entry_data.get("rcsb_entry_info", {}).get("resolution_combined")
-    if res is None:
-        continue
+            # --- species extraction ---
+            for entity in entry.get("polymer_entities", []):
+                orgs = entity.get("rcsb_entity_source_organism", [])
+                if not orgs:
+                    continue
 
-    # Keep best resolution per species
-    if species not in best_per_species or res < best_per_species[species][1]:
-        best_per_species[species] = (pdb_id, res)
+                sci_name = orgs[0].get("scientific_name", "")
+                if not sci_name:
+                    continue
+
+                parts = sci_name.split()
+                if len(parts) < 2:
+                    continue
+
+                species = " ".join(parts[:2])
+
+                # --- keep best ---
+                if species not in best_per_species or resolution < best_per_species[species][1]:
+                    best_per_species[species] = (pdb_id, resolution)
+
+        except Exception:
+            continue
+
+    time.sleep(0.1)
 
 # -------------------------------
-# Output
+# Step 4 — Output
 # -------------------------------
 if not best_per_species:
     raise ValueError("No matching structures found")
 
-print(f"Selected one best-resolution structure per species: {len(best_per_species)}")
+print(f"\nSelected structures: {len(best_per_species)}\n")
+
 for species in sorted(best_per_species):
     pdb_id, res = best_per_species[species]
     print(f"{species}: {pdb_id} ({res} Å)")
 
+# save file
 with open("data/pdb_ids.txt", "w") as f:
     for species in sorted(best_per_species):
         pdb_id, _ = best_per_species[species]
         f.write(pdb_id + "\n")
 
-print(f"Saved {len(best_per_species)} PDB IDs")
+print(f"\nSaved {len(best_per_species)} PDB IDs → data/pdb_ids.txt")
