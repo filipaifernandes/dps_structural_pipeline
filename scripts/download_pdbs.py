@@ -26,7 +26,7 @@ for pdb_id in pdb_ids:
 
         # Handle failed download (returns None or missing file)
         if not file_path or not os.path.exists(file_path):
-            print(f"⚠️ Failed: {pdb_id}")
+            print(f"Failed: {pdb_id}")
             failed.append(pdb_id)
             continue
 
@@ -37,7 +37,7 @@ for pdb_id in pdb_ids:
         successful.append(pdb_id)
 
     except Exception as e:
-        print(f"❌ Error downloading {pdb_id}: {e}")
+        print(f"Error downloading {pdb_id}: {e}")
         failed.append(pdb_id)
 
 print("\n--- SUMMARY ---")

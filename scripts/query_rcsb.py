@@ -36,12 +36,12 @@ if not keywords:
     sys.exit(1)
 
 search_value = " ".join(keywords)
-print(f"🔎 Using search query: {search_value}", flush=True)
+print(f"Using search query: {search_value}", flush=True)
 
 # -------------------------------
 # Step 1 — Search RCSB
 # -------------------------------
-print("📡 Sending search request...", flush=True)
+print("Sending search request...", flush=True)
 
 query = {
     "query": {
