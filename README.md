@@ -4,8 +4,10 @@
 
 This pipeline performs a complete structural bioinformatics workflow to analyze Dps proteins across all species in the Protein Data Bank. The workflow is managed using Snakemake and executed within containers for full reproducibility.
 
+
 The pipeline automatically queries the RCSB PDB database for all Dps structures, selects the best structure per species (by resolution), performs structural alignment using MODELLER's SALIGN algorithm, and constructs a phylogenetic tree.
 https://salilab.org/modeller/registration.html
+
 ---
 
 ## Table of Contents
