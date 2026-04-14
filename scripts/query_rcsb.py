@@ -76,7 +76,7 @@ except Exception as e:
     print("Failed to parse JSON:", e, flush=True)
     sys.exit(1)
 
-print("🔑 Keys in response:", list(data.keys()), flush=True)
+print("Keys in response:", list(data.keys()), flush=True)
 
 # --- Validate structure ---
 result_set = data.get("result_set")
