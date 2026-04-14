@@ -1,4 +1,4 @@
-#DPS Structural Pipeline
+# DPS Structural Pipeline
 
 **Automated and reproducible workflow for retrieving Dps protein structures, performing structural alignment, and constructing phylogenetic trees.**
 
