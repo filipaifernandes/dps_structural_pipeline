@@ -1,4 +1,4 @@
-FROM snakemake/snakemake:7.32.4
+FROM snakemake/snakemake:latest
 
 RUN conda install -y -c bioconda -c conda-forge \
     biopython \
