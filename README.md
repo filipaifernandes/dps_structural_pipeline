@@ -6,8 +6,6 @@ Built with Snakemake and executed inside Docker containers — no manual steps, 
 
 ---
 
-## Table of Contents
-
 1. [Overview](#overview)
 2. [Features](#features)
 3. [Installation](#installation)
