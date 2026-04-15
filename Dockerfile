@@ -5,7 +5,10 @@ RUN conda install -y -c bioconda -c conda-forge \
     fasttree \
     requests \
     pyyaml \
-    python=3.13 && \
-    conda clean -afy
+    python=3.13 \
+    pandas \
+    matplotlib \
+    seaborn \
+    && conda clean -afy
 
 WORKDIR /workflow
