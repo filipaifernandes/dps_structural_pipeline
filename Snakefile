@@ -7,7 +7,8 @@ rule all:
         "data/alignment/structural.ali",
         "data/tree/tree.nwk",
         "data/heatmap/rmsd_matrix.csv",
-        "data/heatmap/rmsd_heatmap.png"
+        "data/heatmap/rmsd_heatmap.png",
+        "data/itol/labels.txt"
 
 rule query_rcsb:
     output:
@@ -71,3 +72,11 @@ rule rmsd_heatmap:
         """
         python scripts/rmsd_heatmap.py data/raw/ {output[0]} {output[1]}
         """
+
+rule itol_labels:
+    input:
+        "data/alignment/structural.ali"
+    output:
+        "data/itol/labels.txt"
+    script:
+        "scripts/itol_labels.py"
