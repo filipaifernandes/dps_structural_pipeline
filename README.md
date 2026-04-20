@@ -23,11 +23,12 @@ Built with Snakemake and executed inside Docker containers — no manual steps, 
 
 ## Overview
 
-The DPS Structural Pipeline provides a **reproducible and automated workflow for structural phylogenetics of Dps proteins across all species in the PDB**. It queries RCSB, selects the best structure per species, aligns them in 3D using MODELLER's SALIGN algorithm, builds a phylogenetic tree, and generates an RMSD heatmap to visualize structural divergence.
+The DPS Structural Pipeline provides a **reproducible and automated workflow for structural phylogenetics of Dps proteins across all species in the PDB**. It queries RCSB, selects the best structure per species, aligns them in 3D using MODELLER's SALIGN algorithm, builds a phylogenetic tree, generates an RMSD heatmap to visualize structural divergence, and produces a ready-to-use iTOL label file that replaces PDB codes with species names in the tree.
 
-Two distinct analyses are combined:
+Three distinct analyses are combined:
 - **Structural alignment** — SALIGN optimizes residue correspondences using 3D atomic coordinates, more robust than sequence-only methods for divergent proteins
 - **RMSD heatmap** — pairwise Cα RMSD matrix across all structures, visualizing structural distance at a glance
+- **iTOL annotation** — species names are fetched from RCSB for each PDB ID and written to a label file ready to upload to [iTOL](https://itol.embl.de/)
 
 > !! Most steps run inside containers. The structural alignment step runs **locally** because MODELLER requires a license key.
 
@@ -40,7 +41,8 @@ Two distinct analyses are combined:
 - **3D structural alignment** — SALIGN algorithm via MODELLER
 - **Phylogenetic tree** — maximum-likelihood inference with FastTree (Newick output)
 - **RMSD heatmap** — pairwise Cα RMSD matrix visualized with seaborn
-- **Containerized** — retrieval, conversion, and tree-building run in identical Docker environments
+- **iTOL label file** — automatically maps PDB IDs to species names for publication-ready tree visualization
+- **Containerized** — retrieval, conversion, tree-building, and label generation run in identical Docker environments
 - **Config-driven** — swap keywords to analyze any protein family
 
 ---
@@ -134,6 +136,27 @@ query:
 | Format conversion PIR → FASTA | `ali_to_fasta.py` | Container | `data/alignment/structural.fasta` |
 | Phylogenetic tree | FastTree | Container | `data/tree/tree.nwk` |
 | RMSD heatmap | `rmsd_heatmap.py` (Biopython + seaborn) | Container | `data/heatmap/` |
+| iTOL label file | `itol_labels.py` (RCSB API) | Container | `data/itol/labels.txt` |
+
+### iTOL Label Generation
+
+The `itol_labels` rule reads the structural alignment file (`structural.ali`), extracts each PDB ID, and queries the RCSB REST API to retrieve the scientific name of the source organism. The result is written as an iTOL-compatible label file with the format:
+
+```
+LABELS
+SEPARATOR TAB
+DATA
+1e9y_A	Deinococcus_radiodurans
+8ci9_C	Escherichia_coli
+...
+```
+
+To visualize the tree with species names:
+1. Go to [iTOL](https://itol.embl.de/) and upload `data/tree/tree.nwk`
+2. Drag and drop `data/itol/labels.txt` onto the tree
+3. Export as SVG or PDF for publication
+
+> If any PDB ID cannot be resolved (e.g. due to a network timeout), the label falls back to `Unknown`. Re-running the rule will retry those entries.
 
 ---
 
@@ -149,9 +172,11 @@ data/
 │   └── structural.fasta         # Alignment in FASTA format
 ├── tree/
 │   └── tree.nwk                 # Phylogenetic tree (Newick format)
-└── heatmap/
-    ├── rmsd_matrix.csv          # Pairwise Cα RMSD matrix
-    └── rmsd_heatmap.png         # Heatmap visualization
+├── heatmap/
+│   ├── rmsd_matrix.csv          # Pairwise Cα RMSD matrix
+│   └── rmsd_heatmap.png         # Heatmap visualization
+└── itol/
+    └── labels.txt               # iTOL annotation file with species names
 ```
 
 ---
@@ -192,6 +217,9 @@ snakemake --dag | dot -Tpng > dag.png
 
 **Alignment fails with structural errors**
 → Inspect `data/raw/` to verify PDB files are valid; try `head -20 data/raw/*.pdb`. Very distant structures may need manual review.
+
+**`labels.txt` contains many `Unknown` entries**
+→ The RCSB API request timed out for some IDs. Re-run just the iTOL rule with `snakemake data/itol/labels.txt --use-singularity --cores 1` to retry.
 
 For verbose output: `snakemake --use-singularity --cores 4 -v`
 
