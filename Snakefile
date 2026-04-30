@@ -2,6 +2,7 @@ configfile: "config.yaml"
 
 rule all:
     input:
+        "data/dps_structures.json",
         "data/pdb_ids.txt",
         "data/raw/.done",
         "data/alignment/structural.ali",
@@ -10,19 +11,21 @@ rule all:
         "data/heatmap/rmsd_heatmap.png",
         "data/itol/labels.txt"
 
-rule query_rcsb:
+rule get_dps_structures:
     output:
+        "data/dps_structures.json",
         "data/pdb_ids.txt"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container: "docker://filipafernandes/dps_structural_pipeline:011"
     shell:
-        "python scripts/query_rcsb.py config.yaml"
+        "python scripts/get_dps_structures.py"
 
 rule download_pdbs:
     input:
         "data/pdb_ids.txt"
     output:
         "data/raw/.done"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container: 
+    	"docker://filipafernandes/dps_structural_pipeline:011"
     shell:
         "python scripts/download_pdbs.py && touch {output}"
 
@@ -44,7 +47,8 @@ rule ali_to_fasta:
         "data/alignment/structural.ali"
     output:
         "data/alignment/structural.fasta"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container: 
+    	"docker://filipafernandes/dps_structural_pipeline:011"
     shell:
         """
         python3 scripts/ali_to_fasta.py {input} {output}
@@ -55,7 +59,8 @@ rule build_tree:
         "data/alignment/structural.fasta"
     output:
         "data/tree/tree.nwk"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container: 
+    	"docker://filipafernandes/dps_structural_pipeline:011"
     shell:
         """
         fasttree {input} > {output}
@@ -67,7 +72,8 @@ rule rmsd_heatmap:
     output:
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container: 
+    	"docker://filipafernandes/dps_structural_pipeline:011"
     shell:
         """
         python scripts/rmsd_heatmap.py data/raw/ {output[0]} {output[1]}
