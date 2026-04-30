@@ -4,7 +4,7 @@ from Bio.PDB import PDBParser
 
 log.verbose()
 env = environ()
-env.io.atom_files_directory = [os.path.abspath("data/raw")]
+env.io.atom_files_directory = [os.path.abspath("data/pdb_sequence_filtered.fasta")]
 
 aln = alignment(env)
 parser = PDBParser(QUIET=True)
