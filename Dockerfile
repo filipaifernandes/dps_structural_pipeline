@@ -2,6 +2,7 @@ FROM snakemake/snakemake:latest
 
 RUN conda install -y -c bioconda -c conda-forge \
     biopython \
+    blast \
     fasttree \
     requests \
     pyyaml \
