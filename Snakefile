@@ -5,36 +5,36 @@ rule all:
         "data/pdb_ids.txt",
         "data/raw/.done",
         "data/alignment/structural.ali",
+        "data/alignment/structural.fasta",
         "data/tree/tree.nwk",
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png",
         "data/itol/labels.txt"
 
-# -----------------------------------------------------------------------
-# Step 1: Query InterPro (IPR002177) -> SIFTS -> best PDB per species
-# -----------------------------------------------------------------------
+
+# 1. Get PDB list
 rule query_interpro:
     output:
         "data/pdb_ids.txt"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
-        "python scripts/query_rcsb.py"
+        "python3 scripts/query_rcsb.py"
 
-# -----------------------------------------------------------------------
-# Step 2: Download PDB files
-# -----------------------------------------------------------------------
+
+# 2. Download PDBs
 rule download_pdbs:
     input:
         "data/pdb_ids.txt"
     output:
         "data/raw/.done"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
-        "python scripts/download_pdbs.py && touch {output}"
+        "python3 scripts/download_pdbs.py && touch {output}"
 
-# -----------------------------------------------------------------------
-# Step 3: Structural alignment with MODELLER SALIGN
-# -----------------------------------------------------------------------
+
+# 3. Alignment
 rule salign_alignment:
     input:
         "data/raw/.done"
@@ -48,50 +48,50 @@ rule salign_alignment:
         python scripts/salign.py
         """
 
-# -----------------------------------------------------------------------
-# Step 4: Convert PIR alignment to FASTA
-# -----------------------------------------------------------------------
+# 4. PIR → FASTA
 rule ali_to_fasta:
     input:
         "data/alignment/structural.ali"
     output:
         "data/alignment/structural.fasta"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
-    shell:
-        "python3 scripts/ali_to_fasta.py {input} {output}"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:010"
+    script:
+    	"scripts/itol_labels.py"
 
-# -----------------------------------------------------------------------
-# Step 5: Phylogenetic tree
-# -----------------------------------------------------------------------
+
+# 5. Tree
 rule build_tree:
     input:
         "data/alignment/structural.fasta"
     output:
         "data/tree/tree.nwk"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
         "fasttree {input} > {output}"
 
-# -----------------------------------------------------------------------
-# Step 6: RMSD heatmap
-# -----------------------------------------------------------------------
+
+# 6. RMSD
 rule rmsd_heatmap:
     input:
         "data/alignment/structural.fasta"
     output:
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png"
-    container: "docker://filipafernandes/dps_structural_pipeline:010"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
-        "python scripts/rmsd_heatmap.py data/raw/ {output[0]} {output[1]}"
+        "python3 scripts/rmsd_heatmap.py data/raw/ {output[0]} {output[1]}"
 
-# -----------------------------------------------------------------------
-# Step 7: iTOL species labels
-# -----------------------------------------------------------------------
+
+# 7. iTOL
 rule itol_labels:
     input:
         "data/alignment/structural.ali"
     output:
         "data/itol/labels.txt"
-    script:
-        "scripts/itol_labels.py"
+    container:
+        "docker://filipafernandes/dps_structural_pipeline:010"
+    shell:
+        "python3 scripts/itol_labels.py"
