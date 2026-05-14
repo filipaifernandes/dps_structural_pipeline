@@ -1,4 +1,4 @@
 threads: 4
 query:
-  keywords:
-    - "Dps"
+  interpro_id: "IPR002177"   # DPS family — DNA-binding protein from starved cells
+batch_size: 50
