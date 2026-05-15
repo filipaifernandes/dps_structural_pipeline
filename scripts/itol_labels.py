@@ -1,53 +1,96 @@
+import sys
 import requests
-import time
 
-input_file = snakemake.input[0]
-output_file = snakemake.output[0]
-
-def get_species(pdb_id):
-    try:
-        url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id}/1"
-        r = requests.get(url, timeout=10)
-
-        if r.status_code != 200:
-            return "Unknown"
-
-        data = r.json()
-        orgs = data.get("rcsb_entity_source_organism", [])
-
-        if orgs:
-            return orgs[0].get("scientific_name", "Unknown")
-
-        return "Unknown"
-
-    except:
-        return "Unknown"
-
+input_file = sys.argv[1]
+output_file = sys.argv[2]
 
 labels = []
 
-# extract IDs from .ali
 with open(input_file) as f:
+
     for line in f:
-        line = line.strip()
-        if line.startswith(">"):
-            seq_id = line.split(";")[1]
-            pdb_id = seq_id.split("_")[0].lower()
-            labels.append((seq_id, pdb_id))
 
-mapping = []
+        if line.startswith(">P1;"):
 
-for seq_id, pdb_id in labels:
-    species = get_species(pdb_id)
-    species_clean = species.replace(" ", "_")
+            try:
 
-    print(f"{seq_id} -> {species}")
-    mapping.append((seq_id, species_clean))
+                header = line.strip()
 
-    time.sleep(0.2)
+                if ";" not in header:
+                    continue
 
-# write iTOL file
+                pdb_id = header.split(";")[1][:4].lower()
+
+                # =====================================================
+                # FETCH ENTRY
+                # =====================================================
+
+                url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}"
+
+                r = requests.get(url, timeout=30)
+
+                species = "Unknown"
+
+                if r.status_code == 200:
+
+                    data = r.json()
+
+                    entities = (
+                        data.get(
+                            "rcsb_entry_container_identifiers",
+                            {}
+                        ).get(
+                            "polymer_entity_ids",
+                            []
+                        )
+                    )
+
+                    if entities:
+
+                        entity_id = entities[0]
+
+                        entity_url = (
+                            f"https://data.rcsb.org/rest/v1/core/polymer_entity/"
+                            f"{pdb_id}/{entity_id}"
+                        )
+
+                        er = requests.get(entity_url, timeout=30)
+
+                        if er.status_code == 200:
+
+                            entity_data = er.json()
+
+                            orgs = entity_data.get(
+                                "rcsb_entity_source_organism",
+                                []
+                            )
+
+                            if orgs:
+
+                                species = orgs[0].get(
+                                    "scientific_name",
+                                    "Unknown"
+                                )
+
+                print(f"{pdb_id} -> {species}")
+
+                labels.append(f"{pdb_id}\t{species}")
+
+            except Exception as e:
+
+                print(f"Error for {pdb_id}: {e}")
+
+# =========================================================
+# WRITE ITOL FILE
+# =========================================================
+
 with open(output_file, "w") as out:
-    out.write("LABELS\nSEPARATOR TAB\nDATA\n")
-    for seq_id, species in mapping:
-        out.write(f"{seq_id}\t{species}\n")
+
+    out.write("LABELS\n")
+    out.write("SEPARATOR TAB\n")
+    out.write("DATA\n")
+
+    for line in labels:
+        out.write(line + "\n")
+
+print(f"\nSaved -> {output_file}\n")
