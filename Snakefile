@@ -56,9 +56,8 @@ rule ali_to_fasta:
         "data/alignment/structural.fasta"
     container:
         "docker://filipafernandes/dps_structural_pipeline:010"
-    script:
-    	"scripts/itol_labels.py"
-
+    shell:
+        "python3 scripts/ali_to_fasta.py {input} {output}"
 
 # 5. Tree
 rule build_tree:
@@ -94,4 +93,6 @@ rule itol_labels:
     container:
         "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
-        "python3 scripts/itol_labels.py"
+        """
+        python3 scripts/itol_labels.py {input} {output}
+        """
