@@ -1,6 +1,12 @@
 threads: 4
 query:
   interpro_ids:
-    - IPR002177
-    - IPR014490
+    - IPR002177   # DPS family — DNA-binding protein from starved cells
+    - IPR014490   # DPS-like family — archaeal/alternative DPS
+  manual_include:
+    - pdb_id: 1zuj
+      reason: "Lactococcus lactis DpsA - not annotated in InterPro"
+    - pdb_id: 1zs3
+      reason: "Lactococcus lactis DpsB - not annotated in InterPro"
+sifts_max_age_days: 30
 batch_size: 50
