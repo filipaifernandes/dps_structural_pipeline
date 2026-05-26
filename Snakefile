@@ -3,6 +3,7 @@ configfile: "config.yaml"
 rule all:
     input:
         "data/pdb_ids.txt",
+        "data/selection_report.tsv",
         "data/raw/.done",
         "data/alignment/structural.ali",
         "data/alignment/structural.fasta",
@@ -12,20 +13,23 @@ rule all:
         "data/itol/labels.txt"
 
 
-# 1. Get PDB list
+# 1. Query InterPro + SIFTS -> pdb_ids.txt + species_map.json + report.tsv
 rule query_interpro:
     output:
-        "data/pdb_ids.txt"
+        "data/pdb_ids.txt",
+        "data/species_map.json",
+        "data/selection_report.tsv",
     container:
         "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
         "python3 scripts/query_rcsb.py"
 
 
-# 2. Download PDBs
+# 2. Download PDBs + patch unknown organisms from PDB headers
 rule download_pdbs:
     input:
-        "data/pdb_ids.txt"
+        "data/pdb_ids.txt",
+        "data/species_map.json",
     output:
         "data/raw/.done"
     container:
@@ -34,7 +38,7 @@ rule download_pdbs:
         "python3 scripts/download_pdbs.py && touch {output}"
 
 
-# 3. Alignment
+# 3. Structural alignment with MODELLER SALIGN
 rule salign_alignment:
     input:
         "data/raw/.done"
@@ -48,7 +52,7 @@ rule salign_alignment:
         python scripts/salign.py
         """
 
-# 4. PIR → FASTA
+# 4. PIR -> FASTA
 rule ali_to_fasta:
     input:
         "data/alignment/structural.ali"
@@ -59,7 +63,8 @@ rule ali_to_fasta:
     shell:
         "python3 scripts/ali_to_fasta.py {input} {output}"
 
-# 5. Tree
+
+# 5. Phylogenetic tree
 rule build_tree:
     input:
         "data/alignment/structural.fasta"
@@ -71,7 +76,7 @@ rule build_tree:
         "fasttree {input} > {output}"
 
 
-# 6. RMSD
+# 6. RMSD heatmap
 rule rmsd_heatmap:
     input:
         "data/alignment/structural.fasta"
@@ -84,15 +89,14 @@ rule rmsd_heatmap:
         "python3 scripts/rmsd_heatmap.py data/raw/ {output[0]} {output[1]}"
 
 
-# 7. iTOL
+# 7. iTOL labels
 rule itol_labels:
     input:
-        "data/alignment/structural.ali"
+        "data/alignment/structural.ali",
+        "data/species_map.json",
     output:
         "data/itol/labels.txt"
     container:
         "docker://filipafernandes/dps_structural_pipeline:010"
     shell:
-        """
-        python3 scripts/itol_labels.py {input} {output}
-        """
+        "python3 scripts/itol_labels.py {input[0]} {output}"
