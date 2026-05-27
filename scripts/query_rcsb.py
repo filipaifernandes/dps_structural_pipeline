@@ -237,6 +237,34 @@ else:
 
 # Build lookup: pdb_id -> UniProt from SIFTS
 # (used to patch missing UniProt and find extras)
+# Load blacklists from config.yaml — nothing hardcoded here
+UNIPROT_BLACKLIST = {
+    entry["accession"]
+    for entry in config.get("query", {}).get("uniprot_blacklist", [])
+}
+PDB_ID_BLACKLIST = {
+    entry["pdb_id"].lower()
+    for entry in config.get("query", {}).get("pdb_blacklist", [])
+}
+
+if UNIPROT_BLACKLIST:
+    print(f"  UniProt blacklist loaded: {UNIPROT_BLACKLIST}", flush=True)
+if PDB_ID_BLACKLIST:
+    print(f"  PDB ID blacklist loaded : {PDB_ID_BLACKLIST}", flush=True)
+removed_from_set = uniprot_accessions & UNIPROT_BLACKLIST
+if removed_from_set:
+    print(f"  Purging blacklisted accessions before SIFTS: {removed_from_set}", flush=True)
+    uniprot_accessions -= UNIPROT_BLACKLIST
+
+# Also remove any structures already collected whose UniProt is blacklisted
+# or whose PDB ID is explicitly blacklisted
+all_structures = [
+    s for s in all_structures
+    if s.get("uniprot") not in UNIPROT_BLACKLIST
+    and s["pdb_id"] not in PDB_ID_BLACKLIST
+]
+print(f"  Structures after blacklist filter: {len(all_structures)}", flush=True)
+
 known_pdbs        = {s["pdb_id"] for s in all_structures}
 
 # Two SIFTS lookups built in one pass:
@@ -246,7 +274,10 @@ sifts_pdb_uniprot = defaultdict(set)
 sifts_all_pdb_uni  = defaultdict(set)
 
 with gzip.open(SIFTS_CACHE, "rt") as f:
-    reader = csv.DictReader(f)
+    # SIFTS file has a comment line starting with '#' before the real header
+    # We must skip it to get correct column names
+    raw_lines = (line for line in f if not line.startswith("#"))
+    reader = csv.DictReader(raw_lines)
     for i, row in enumerate(reader):
         if i == 0:
             print(f"  SIFTS columns: {list(row.keys())}", flush=True)
