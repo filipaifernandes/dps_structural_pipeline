@@ -20,7 +20,7 @@ rule query_interpro:
         "data/species_map.json",
         "data/selection_report.tsv",
     container:
-        "docker://filipafernandes/dps_structural_pipeline:010"
+        "docker://filipafernandes/dps_structural_pipeline:012"
     shell:
         "python3 scripts/query_rcsb.py"
 
@@ -33,7 +33,7 @@ rule download_pdbs:
     output:
         "data/raw/.done"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:010"
+        "docker://filipafernandes/dps_structural_pipeline:012"
     shell:
         "python3 scripts/download_pdbs.py && touch {output}"
 
@@ -59,7 +59,7 @@ rule ali_to_fasta:
     output:
         "data/alignment/structural.fasta"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:010"
+        "docker://filipafernandes/dps_structural_pipeline:012"
     shell:
         "python3 scripts/ali_to_fasta.py {input} {output}"
 
@@ -71,23 +71,39 @@ rule build_tree:
     output:
         "data/tree/tree.nwk"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:010"
+        "docker://filipafernandes/dps_structural_pipeline:012"
     shell:
-        "fasttree {input} > {output}"
+        """
+        iqtree2 \
+            -s {input} \
+            -m LG+G4 \
+            -blmin 1e-6 \
+            -bnni \
+            -nt AUTO \
+            -redo \
+            --prefix data/tree/tree
 
+        cp data/tree/tree.treefile {output}
+        """
 
 # 6. RMSD heatmap
 rule rmsd_heatmap:
     input:
-        "data/alignment/structural.fasta"
+        alignment="data/alignment/structural.fasta",
+        done="data/raw/.done"
     output:
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:010"
+        "docker://filipafernandes/dps_structural_pipeline:012"
     shell:
-        "python3 scripts/rmsd_heatmap.py data/raw/ {output[0]} {output[1]}"
-
+        """
+    	 python3 scripts/rmsd_heatmap.py \
+         data/raw/ \
+         {input.alignment} \
+         {output[0]} \
+         {output[1]}
+    	"""
 
 # 7. iTOL labels
 rule itol_labels:
@@ -97,6 +113,6 @@ rule itol_labels:
     output:
         "data/itol/labels.txt"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:010"
+        "docker://filipafernandes/dps_structural_pipeline:012"
     shell:
         "python3 scripts/itol_labels.py {input[0]} {output}"
