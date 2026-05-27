@@ -2,10 +2,10 @@ FROM snakemake/snakemake:latest
 
 RUN conda install -y -c bioconda -c conda-forge \
     biopython \
-    fasttree \
+    iqtree \
     requests \
     pyyaml \
-    python=3.13 \
+    python= \
     pandas \
     matplotlib \
     seaborn \
