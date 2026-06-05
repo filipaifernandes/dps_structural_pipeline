@@ -6,6 +6,8 @@ query:
     - IPR014490   # DPS-like family — archaeal/alternative DPS
 
   manual_include:
+    - pdb_id: 1dps
+      reason: "Escherichia coli DPS — canonical reference structure, original Dps protein"
     - pdb_id: 1zuj
       reason: "Lactococcus lactis DpsA - genuine DPS paralog, not annotated in InterPro"
     - pdb_id: 1zs3
@@ -20,6 +22,8 @@ query:
       reason: "Mis-annotated non-DPS structure"
     - pdb_id: 3ak9
       reason: "Lower-resolution duplicate of 3ak8 (Salmonella enterica, 1.30 A vs 1.25 A) - lacks UniProt annotation so automatic dedup cannot remove it"
+    - pdb_id: 8ouc
+      reason: "Duplicate of 1dps (Escherichia coli) — 1dps kept as canonical reference"
 
 sifts_max_age_days: 30
 batch_size: 50
