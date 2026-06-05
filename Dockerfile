@@ -5,7 +5,7 @@ RUN conda install -y -c bioconda -c conda-forge \
     iqtree \
     requests \
     pyyaml \
-    python= \
+    python \
     pandas \
     matplotlib \
     seaborn \
