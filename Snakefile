@@ -65,25 +65,20 @@ rule ali_to_fasta:
 
 
 # 5. Phylogenetic tree
-rule build_tree:
+rule structural_tree:
     input:
-        "data/alignment/structural.fasta"
+        alignment="data/alignment/structural.fasta",
+        done="data/raw/.done"
     output:
         "data/tree/tree.nwk"
     container:
         "docker://filipafernandes/dps_structural_pipeline:013"
     shell:
         """
-        iqtree \
-            -s {input} \
-            -m LG+G4 \
-            -blmin 1e-6 \
-            -bnni \
-            -nt AUTO \
-            -redo \
-            --prefix data/tree/tree
-
-        cp data/tree/tree.treefile {output}
+        python3 scripts/structural_tree.py \
+            data/raw \
+            {input.alignment} \
+            {output}
         """
 
 # 6. RMSD heatmap
