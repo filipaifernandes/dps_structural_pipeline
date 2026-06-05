@@ -117,10 +117,12 @@ Z = linkage(
 
 def build_newick(node, parent_dist, leaf_names):
 
+    branch_length = max(0.0, parent_dist - node.dist)
+
     if node.is_leaf():
-        return "%s:%.4f" % (
+        return "%s:%.6f" % (
             leaf_names[node.id],
-            parent_dist - node.dist
+            branch_length
         )
 
     left = build_newick(
@@ -135,10 +137,10 @@ def build_newick(node, parent_dist, leaf_names):
         leaf_names
     )
 
-    return "(%s,%s):%.4f" % (
+    return "(%s,%s):%.6f" % (
         left,
         right,
-        parent_dist - node.dist
+        branch_length
     )
 
 
