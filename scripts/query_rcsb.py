@@ -334,7 +334,6 @@ print(f"  UniProt patched for {patched} structures", flush=True)
 # A structure is valid if:
 #   (a) its UniProt was in our original InterPro-derived set, OR
 #   (b) it has no UniProt (unknown, keep for now, PDB header will resolve)
-original_dps_uniprots = set(uniprot_accessions)  # snapshot before patching extras
 
 valid_structures = []
 for s in all_structures:
