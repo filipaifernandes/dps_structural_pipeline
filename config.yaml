@@ -26,4 +26,3 @@ query:
       reason: "Duplicate of 1dps (Escherichia coli) — 1dps kept as canonical reference"
 
 sifts_max_age_days: 30
-batch_size: 50
