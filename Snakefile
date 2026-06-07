@@ -7,7 +7,7 @@ rule all:
         "data/raw/.done",
         "data/alignment/structural.ali",
         "data/alignment/structural.fasta",
-        "data/tree/tree.nwk",
+        "data/tree/tree.treefile",
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png",
         "data/itol/labels.txt"
@@ -64,21 +64,21 @@ rule ali_to_fasta:
         "python3 scripts/ali_to_fasta.py {input} {output}"
 
 
-# 5. Phylogenetic tree
 rule structural_tree:
     input:
-        alignment="data/alignment/structural.fasta",
-        done="data/raw/.done"
+        alignment="data/alignment/structural.fasta"
     output:
-        "data/tree/tree.nwk"
+        "data/tree/tree.treefile"
     container:
         "docker://filipafernandes/dps_structural_pipeline:013"
     shell:
         """
-        python3 scripts/structural_tree.py \
-            data/raw \
-            {input.alignment} \
-            {output}
+        iqtree \
+            -s {input.alignment} \
+            -m MFP \
+            -bb 1000 \
+            -nt AUTO \
+            --prefix data/tree/tree
         """
 
 # 6. RMSD heatmap
