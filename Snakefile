@@ -63,7 +63,7 @@ rule ali_to_fasta:
     shell:
         "python3 scripts/ali_to_fasta.py {input} {output}"
 
-
+# 5. Tree
 rule structural_tree:
     input:
         alignment="data/alignment/structural.fasta"
@@ -85,7 +85,8 @@ rule structural_tree:
 rule rmsd_heatmap:
     input:
         alignment="data/alignment/structural.fasta",
-        done="data/raw/.done"
+        done="data/raw/.done",
+        species_map="data/species_map.json"
     output:
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png"
@@ -93,12 +94,13 @@ rule rmsd_heatmap:
         "docker://filipafernandes/dps_structural_pipeline:013"
     shell:
         """
-    	 python3 scripts/rmsd_heatmap.py \
-         data/raw/ \
-         {input.alignment} \
-         {output[0]} \
-         {output[1]}
-    	"""
+        python3 scripts/rmsd_heatmap.py \
+            data/raw/ \
+            {input.alignment} \
+            {output[0]} \
+            {output[1]} \
+            {input.species_map}
+        """
 
 # 7. iTOL labels
 rule itol_labels:
