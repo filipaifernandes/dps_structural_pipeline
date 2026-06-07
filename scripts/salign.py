@@ -42,7 +42,7 @@ if len(pdbs) < 2:
     raise ValueError("Need at least 2 PDBs")
 
 # -------------------------------
-# 🔥 Reference structure
+# Reference structure
 # -------------------------------
 ref_code = pdbs[0]
 ref_file = f"data/raw/{ref_code}.pdb"
@@ -67,7 +67,7 @@ aln.append_model(
 )
 
 # -------------------------------
-# 🔥 Add remaining structures
+# Add remaining structures
 # -------------------------------
 loaded = 1
 
@@ -107,7 +107,7 @@ if loaded < 2:
     raise ValueError("Not enough valid structures")
 
 # -------------------------------
-# 🔥 SALIGN (STRUCTURAL PASS)
+# SALIGN (STRUCTURAL PASS)
 # -------------------------------
 aln.salign(
     alignment_type='tree',
@@ -120,7 +120,7 @@ aln.salign(
 )
 
 # -------------------------------
-# 🔥 SALIGN (FORCE GAP ALIGNMENT)
+# SALIGN (FORCE GAP ALIGNMENT)
 # -------------------------------
 aln.salign(
     alignment_type='progressive',

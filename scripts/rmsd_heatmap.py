@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -14,6 +15,12 @@ pdb_dir = sys.argv[1]
 alignment_file = sys.argv[2]
 output_matrix = sys.argv[3]
 output_plot = sys.argv[4]
+# Optional 5th arg: path to species_map.json for human-readable axis labels
+species_map = {}
+if len(sys.argv) > 5 and os.path.exists(sys.argv[5]):
+    with open(sys.argv[5]) as _f:
+        species_map = json.load(_f)
+    print(f"Loaded species map: {len(species_map)} entries")
 
 parser = PDBParser(QUIET=True)
 
@@ -160,16 +167,34 @@ df.to_csv(output_matrix)
 
 # -----------------------------
 # Heatmap
+# Use species names if available, otherwise fall back to PDB IDs
 # -----------------------------
 
-plt.figure(figsize=(10, 8))
+def make_label(pdb_id):
+    species = species_map.get(pdb_id)
+    if species and species.lower() != "unknown":
+        return f"{species} ({pdb_id.upper()})"
+    return pdb_id.upper()
+
+display_labels = [make_label(n) for n in names]
+
+df_display = df.copy()
+df_display.index   = display_labels
+df_display.columns = display_labels
+
+figsize = max(10, len(names) * 0.4)
+plt.figure(figsize=(figsize, figsize * 0.8))
 
 sns.heatmap(
-    df,
+    df_display,
     cmap="magma",
-    square=True
+    square=True,
+    xticklabels=True,
+    yticklabels=True
 )
 
+plt.xticks(fontsize=7, rotation=45, ha="right")
+plt.yticks(fontsize=7, rotation=0)
 plt.title("Alignment-aware Cα RMSD")
 
 plt.tight_layout()
