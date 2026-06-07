@@ -45,7 +45,7 @@ Three distinct analyses are combined:
 - **Manual include support** — structures not yet annotated in InterPro can be added via `config.yaml` with a documented reason; fetched automatically from PDBe
 - **Selection report** — full audit trail in `data/selection_report.tsv` listing every selected structure with PDB ID, organism, resolution, UniProt accession, source, and paralog flag
 - **3D structural alignment** — SALIGN algorithm via MODELLER
-- **Phylogenetic tree** — maximum-likelihood inference with FastTree (Newick output)
+- **Phylogenetic tree** — maximum-likelihood inference with IQ-TREE (ModelFinder + UFBoot, `.treefile` output)
 - **RMSD heatmap** — pairwise Cα RMSD matrix visualized with seaborn
 - **iTOL label file** — automatically maps PDB IDs to species names for publication-ready tree visualization
 - **Containerized** — all steps except SALIGN run in identical Docker/Apptainer environments
@@ -117,13 +117,14 @@ query:
     - IPR002177   # DPS family — DNA-binding protein from starved cells
     - IPR014490   # DPS-like family — archaeal/alternative DPS
   manual_include:
+    - pdb_id: 1dps
+      reason: "Escherichia coli DPS — canonical reference structure, original Dps protein"
     - pdb_id: 1zuj
       reason: "Lactococcus lactis DpsA - genuine DPS paralog, not annotated in InterPro"
     - pdb_id: 1zs3
       reason: "Lactococcus lactis DpsB - genuine DPS paralog, not annotated in InterPro"
 
 sifts_max_age_days: 30
-batch_size: 50
 ```
 
 | Parameter | Description |
@@ -132,7 +133,6 @@ batch_size: 50
 | `interpro_ids` | InterPro family accessions to query — drives all structure retrieval |
 | `manual_include` | Structures to force-include regardless of InterPro annotation, with mandatory reason |
 | `sifts_max_age_days` | How many days to cache the SIFTS flat file before re-downloading (default: 30) |
-| `batch_size` | Batch size for API requests |
 
 ### Repurposing for another protein family
 
@@ -156,7 +156,7 @@ Zero code changes needed.
 | Structure download | `download_pdbs` | Biopython PDBList | Container | `data/raw/*.pdb` |
 | Structural alignment | `salign_alignment` | MODELLER SALIGN | **Local** | `data/alignment/structural.ali` |
 | Format conversion | `ali_to_fasta` | custom script | Container | `data/alignment/structural.fasta` |
-| Phylogenetic tree | `build_tree` | FastTree | Container | `data/tree/tree.nwk` |
+| Phylogenetic tree | `structural_tree` | IQ-TREE | Container | `data/tree/tree.treefile` |
 | RMSD heatmap | `rmsd_heatmap` | Biopython + seaborn | Container | `data/heatmap/` |
 | iTOL labels | `itol_labels` | custom script | Container | `data/itol/labels.txt` |
 
@@ -206,7 +206,7 @@ DATA
 ```
 
 To visualize:
-1. Go to [iTOL](https://itol.embl.de/) and upload `data/tree/tree.nwk`
+1. Go to [iTOL](https://itol.embl.de/) and upload `data/tree/tree.treefile`
 2. Drag and drop `data/itol/labels.txt` onto the tree
 3. Export as SVG or PDF
 
@@ -226,7 +226,7 @@ data/
 │   ├── structural.ali           # Structural alignment (PIR format)
 │   └── structural.fasta         # Alignment in FASTA format
 ├── tree/
-│   └── tree.nwk                 # Phylogenetic tree (Newick format)
+│   └── tree.treefile            # Phylogenetic tree (IQ-TREE Newick + bootstrap support)
 ├── heatmap/
 │   ├── rmsd_matrix.csv          # Pairwise Cα RMSD matrix
 │   └── rmsd_heatmap.png         # Heatmap visualization
@@ -294,6 +294,10 @@ snakemake --dag | dot -Tpng > dag.png
 → Check `data/selection_report.tsv` — the `source` column shows where each structure came from
 → If a known DPS structure is absent, add it to `manual_include` in `config.yaml` with a reason
 
+**Some structures silently missing from alignment**
+→ Check `data/failed_pdb_ids.txt` after the download step — any PDB IDs that failed to download are logged there
+→ The pipeline continues without them; if critical entries are missing, add them to `manual_include` or rerun with better connectivity
+
 **Alignment fails with structural errors**
 → Inspect `data/raw/` to verify PDB files are valid: `head -5 data/raw/*.pdb`
 → Very distant structures may require manual review
@@ -311,7 +315,7 @@ For verbose Snakemake output: `snakemake --use-singularity --cores 4 -v`
 
 - **Snakemake** — Köster & Rahmann, *Bioinformatics* 2012
 - **MODELLER / SALIGN** — Šali & Blundell, *J Mol Biol* 1993; Madhusudhan et al., *Bioinformatics* 2006
-- **FastTree** — Price et al., *PLoS ONE* 2010
+- **IQ-TREE** — Minh et al., *Mol Biol Evol* 2020; Kalyaanamoorthy et al., *Nat Methods* 2017 (ModelFinder); Hoang et al., *Mol Biol Evol* 2018 (UFBoot)
 - **Biopython** — Cock et al., *Bioinformatics* 2009
 - **InterPro** — Paysan-Lafosse et al., *Nucleic Acids Res* 2023
 - **SIFTS** — Dana et al., *Nucleic Acids Res* 2019
