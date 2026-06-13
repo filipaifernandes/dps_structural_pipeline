@@ -6,23 +6,31 @@ query:
     - IPR014490   # DPS-like family — archaeal/alternative DPS
 
   manual_include:
-    - pdb_id: 1dps
-      reason: "Escherichia coli DPS — canonical reference structure, original Dps protein"
     - pdb_id: 1zuj
-      reason: "Lactococcus lactis DpsA - genuine DPS paralog, not annotated in InterPro"
+      reason: "Lactococcus lactis DpsA — DPS paralog not captured by InterPro/SIFTS retrieval"
     - pdb_id: 1zs3
-      reason: "Lactococcus lactis DpsB - genuine DPS paralog, not annotated in InterPro"
+      reason: "Lactococcus lactis DpsB — DPS paralog not captured by InterPro/SIFTS retrieval"
+
+  pdb_force:
+    - uniprot: P0ABT2
+      pdb_id: 1dps
+      reason: "Escherichia coli DPS — canonical reference, preferred over higher-resolution alternatives"
+    - uniprot: A0QXB7
+      pdb_id: 2z90
+      reason: "Mycolicibacterium smegmatis Dps — preferred over 5H46 (2.40 Å vs 2.85 Å)"
 
   uniprot_blacklist:
     - accession: P0DTC2
-      reason: "SARS-CoV-2 spike protein - InterPro annotation error"
+      reason: "SARS-CoV-2 spike protein — InterPro annotation error"
 
   pdb_blacklist:
     - pdb_id: 8fa2
       reason: "Mis-annotated non-DPS structure"
     - pdb_id: 3ak9
-      reason: "Lower-resolution duplicate of 3ak8 (Salmonella enterica, 1.30 A vs 1.25 A) - lacks UniProt annotation so automatic dedup cannot remove it"
-    - pdb_id: 8ouc
-      reason: "Duplicate of 1dps (Escherichia coli) — 1dps kept as canonical reference"
+      reason: "Lower-resolution duplicate of 3ak8 — lacks UniProt annotation so pdb_force cannot handle it"
+    - pdb_id: 5h46
+      reason: "Mycolicibacterium smegmatis (A0QXB7) — SIFTS re-adds after pdb_force, 2Z90 retained"
+    - pdb_id: 2c2u
+      reason: "Deinococcus radiodurans DrDps2 — SIFTS re-adds after pdb_force"
 
 sifts_max_age_days: 30
