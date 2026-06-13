@@ -20,7 +20,7 @@ rule query_interpro:
         "data/species_map.json",
         "data/selection_report.tsv",
     container:
-        "docker://filipafernandes/dps_structural_pipeline:013"
+        "docker://filipafernandes/dps_structural_pipeline:014"
     shell:
         "python3 scripts/query_rcsb.py"
 
@@ -33,7 +33,7 @@ rule download_pdbs:
     output:
         "data/raw/.done"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:013"
+        "docker://filipafernandes/dps_structural_pipeline:014"
     shell:
         "python3 scripts/download_pdbs.py && touch {output}"
 
@@ -59,7 +59,7 @@ rule ali_to_fasta:
     output:
         "data/alignment/structural.fasta"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:013"
+        "docker://filipafernandes/dps_structural_pipeline:014"
     shell:
         "python3 scripts/ali_to_fasta.py {input} {output}"
 
@@ -70,7 +70,7 @@ rule structural_tree:
     output:
         "data/tree/tree.treefile"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:013"
+        "docker://filipafernandes/dps_structural_pipeline:014"
     shell:
         """
         iqtree \
@@ -78,6 +78,7 @@ rule structural_tree:
             -m MFP \
             -bb 1000 \
             -nt AUTO \
+            --redo \
             --prefix data/tree/tree
         """
 
@@ -91,7 +92,7 @@ rule rmsd_heatmap:
         "data/heatmap/rmsd_matrix.csv",
         "data/heatmap/rmsd_heatmap.png"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:013"
+        "docker://filipafernandes/dps_structural_pipeline:014"
     shell:
         """
         python3 scripts/rmsd_heatmap.py \
@@ -110,6 +111,6 @@ rule itol_labels:
     output:
         "data/itol/labels.txt"
     container:
-        "docker://filipafernandes/dps_structural_pipeline:013"
+        "docker://filipafernandes/dps_structural_pipeline:014"
     shell:
         "python3 scripts/itol_labels.py {input[0]} {output}"
