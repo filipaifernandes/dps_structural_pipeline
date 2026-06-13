@@ -265,6 +265,96 @@ all_structures = [
 ]
 print(f"  Structures after blacklist filter: {len(all_structures)}", flush=True)
 
+# =========================================================
+# pdb_force — for a given UniProt, always use a specific PDB
+#
+# Removes all other PDB IDs for that UniProt from the pool,
+# and auto-fetches the forced PDB from PDBe/RCSB if it isn't
+# already present. No need to also list it in manual_include.
+# =========================================================
+PDB_FORCE = {
+    entry["uniprot"].strip(): entry["pdb_id"].lower().strip()
+    for entry in config.get("query", {}).get("pdb_force", [])
+}
+
+if PDB_FORCE:
+    print(f"\n  pdb_force entries: {PDB_FORCE}", flush=True)
+    PDBE_SUMMARY = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/"
+
+    for uniprot_acc, forced_pdb in PDB_FORCE.items():
+        # remove all other PDBs for this UniProt
+        before = len(all_structures)
+        all_structures = [
+            s for s in all_structures
+            if not (s.get("uniprot") == uniprot_acc and s["pdb_id"] != forced_pdb)
+        ]
+        removed = before - len(all_structures)
+        if removed:
+            print(f"  pdb_force: removed {removed} alternative(s) for {uniprot_acc}, keeping {forced_pdb.upper()}", flush=True)
+
+        # auto-fetch forced PDB if not already in pool
+        if not any(s["pdb_id"] == forced_pdb for s in all_structures):
+            print(f"  pdb_force: {forced_pdb.upper()} not in pool — fetching automatically...", flush=True)
+            try:
+                resolution = None
+                organism   = "Unknown"
+
+                # try PDBe first
+                r = requests.get(PDBE_SUMMARY + forced_pdb, timeout=15)
+                if r.status_code == 200:
+                    data = r.json()
+                    pdbe_entry = data.get(forced_pdb, [None])[0]
+                    if pdbe_entry:
+                        for key in ("resolution", "resolution_high"):
+                            val = pdbe_entry.get(key)
+                            if val is not None:
+                                try:
+                                    resolution = float(val)
+                                    break
+                                except (ValueError, TypeError):
+                                    pass
+                        for src in pdbe_entry.get("source", []):
+                            name = src.get("organism_scientific_name", "")
+                            if name and name.lower() != "unknown":
+                                organism = name
+                                break
+
+                # RCSB fallback if PDBe failed
+                if resolution is None:
+                    print(f"  pdb_force: PDBe had no data for {forced_pdb.upper()} — trying RCSB...", flush=True)
+                    rcsb_r = requests.get(f"https://data.rcsb.org/rest/v1/core/entry/{forced_pdb.upper()}", timeout=15)
+                    if rcsb_r.status_code == 200:
+                        refine = rcsb_r.json().get("refine", [{}])
+                        if refine:
+                            val = refine[0].get("ls_d_res_high")
+                            if val is not None:
+                                try:
+                                    resolution = float(val)
+                                except (ValueError, TypeError):
+                                    pass
+                    poly_r = requests.get(f"https://data.rcsb.org/rest/v1/core/polymer_entity/{forced_pdb.upper()}/1", timeout=15)
+                    if poly_r.status_code == 200:
+                        src_orgs = poly_r.json().get("rcsb_entity_source_organism", [])
+                        if src_orgs:
+                            organism = src_orgs[0].get("ncbi_scientific_name") or src_orgs[0].get("scientific_name") or "Unknown"
+
+                if resolution is None:
+                    print(f"  pdb_force: WARNING — could not get resolution for {forced_pdb.upper()}, skipping", flush=True)
+                else:
+                    species = normalise_species(organism)
+                    print(f"  pdb_force: fetched {forced_pdb.upper()} | {species} | {resolution} Å", flush=True)
+                    all_structures.append({
+                        "pdb_id"    : forced_pdb,
+                        "resolution": resolution,
+                        "organism"  : species,
+                        "uniprot"   : uniprot_acc,
+                        "source"    : "pdb_force",
+                    })
+            except Exception as e:
+                print(f"  pdb_force: ERROR fetching {forced_pdb.upper()}: {e}", flush=True)
+        else:
+            print(f"  pdb_force: {forced_pdb.upper()} already in pool ✓", flush=True)
+
 known_pdbs        = {s["pdb_id"] for s in all_structures}
 
 # Two SIFTS lookups built in one pass:
@@ -453,51 +543,90 @@ if manual_entries:
         try:
             r = requests.get(PDBE_SUMMARY + pdb_id, timeout=15)
             r.raise_for_status()
-            data = r.json()
-            entries_list = data.get(pdb_id, [])
+            try:
+                data = r.json()
+                entries_list = data.get(pdb_id, [])
+            except Exception:
+                print(f"  WARNING: PDBe returned unparseable response for {pdb_id.upper()} — trying RCSB fallback", flush=True)
+                entries_list = []
             if not entries_list:
-                print(f"  WARNING: PDBe returned no data for {pdb_id.upper()}", flush=True)
-                continue
-            pdbe_entry = entries_list[0]
+                print(f"  WARNING: PDBe returned no data for {pdb_id.upper()} — trying RCSB fallback", flush=True)
+                pdbe_entry = None
+            else:
+                pdbe_entry = entries_list[0]
 
             resolution = None
-            for key in ("resolution", "resolution_high", "r_factor"):
-                val = pdbe_entry.get(key)
-                if val is not None:
+
+            if pdbe_entry is not None:
+                for key in ("resolution", "resolution_high", "r_factor"):
+                    val = pdbe_entry.get(key)
+                    if val is not None:
+                        try:
+                            resolution = float(val)
+                            break
+                        except (ValueError, TypeError):
+                            pass
+
+                # Fallback: try PDBe experiment endpoint which has resolution for older entries
+                if resolution is None:
                     try:
-                        resolution = float(val)
-                        break
-                    except (ValueError, TypeError):
+                        exp_url = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}"
+                        exp_r = requests.get(exp_url, timeout=15)
+                        if exp_r.status_code == 200:
+                            exp_data = exp_r.json().get(pdb_id, [])
+                            for exp in exp_data:
+                                val = exp.get("resolution") or exp.get("resolution_high")
+                                if val is not None:
+                                    try:
+                                        resolution = float(val)
+                                        break
+                                    except (ValueError, TypeError):
+                                        pass
+                    except Exception:
                         pass
 
-            # Fallback: try PDBe experiment endpoint which has resolution for older entries
-            if resolution is None:
+            # RCSB fallback — used when PDBe has no record (e.g. older entries like 1ZUJ)
+            organism_rcsb = None
+            if resolution is None or pdbe_entry is None:
                 try:
-                    exp_url = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}"
-                    exp_r = requests.get(exp_url, timeout=15)
-                    if exp_r.status_code == 200:
-                        exp_data = exp_r.json().get(pdb_id, [])
-                        for exp in exp_data:
-                            val = exp.get("resolution") or exp.get("resolution_high")
-                            if val is not None:
-                                try:
-                                    resolution = float(val)
-                                    break
-                                except (ValueError, TypeError):
-                                    pass
-                except Exception:
-                    pass
+                    print(f"  Trying RCSB for {pdb_id.upper()}...", flush=True)
+                    rcsb_url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id.upper()}"
+                    rcsb_r = requests.get(rcsb_url, timeout=15)
+                    if rcsb_r.status_code == 200:
+                        rcsb_data = rcsb_r.json()
+                        if resolution is None:
+                            refine = rcsb_data.get("refine", [{}])
+                            if refine:
+                                val = refine[0].get("ls_d_res_high")
+                                if val is not None:
+                                    try:
+                                        resolution = float(val)
+                                    except (ValueError, TypeError):
+                                        pass
+                        # get organism from RCSB polymer entity
+                        poly_url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id.upper()}/1"
+                        poly_r = requests.get(poly_url, timeout=15)
+                        if poly_r.status_code == 200:
+                            poly_data = poly_r.json()
+                            src_orgs = poly_data.get("rcsb_entity_source_organism", [])
+                            if src_orgs:
+                                organism_rcsb = src_orgs[0].get("ncbi_scientific_name") or src_orgs[0].get("scientific_name")
+                except Exception as rcsb_e:
+                    print(f"  RCSB fallback also failed for {pdb_id.upper()}: {rcsb_e}", flush=True)
 
             if resolution is None:
-                print(f"  WARNING: no resolution for {pdb_id.upper()} -- skipping", flush=True)
+                print(f"  WARNING: no resolution for {pdb_id.upper()} from PDBe or RCSB -- skipping", flush=True)
                 continue
 
             organism = "Unknown"
-            for src in pdbe_entry.get("source", []):
-                name = src.get("organism_scientific_name", "")
-                if name and name.lower() != "unknown":
-                    organism = name
-                    break
+            if organism_rcsb:
+                organism = organism_rcsb
+            elif pdbe_entry is not None:
+                for src in pdbe_entry.get("source", []):
+                    name = src.get("organism_scientific_name", "")
+                    if name and name.lower() != "unknown":
+                        organism = name
+                        break
 
             species = normalise_species(organism)
             print(f"  {pdb_id.upper()} | {species} | {resolution} A | manual", flush=True)
